@@ -9,7 +9,7 @@ pipeline {
         stage('Installing Ansible') {
             steps {
               script {
-                def ansible_exists = fileExist '/usr/bin/ansible'
+                def ansible_exists = fileExists '/usr/bin/ansible'
                 if (ansible_exists == true) {
                      echo "Skipping Ansible install - already exixts"
                 } else {
