@@ -1,36 +1,44 @@
 pipeline {
-    agent any   
+    agent { label 'linux' }
+
+    options {
+        skipDefaultCheckout()
+    }
+
     stages {
         stage('Delete the workspace') {
             steps {
                 cleanWs()
             }
         }
-        stage('Installing Ansible') {
-            steps {
-              script {
-                def ansible_exists = fileExists '/usr/bin/ansible'
-                if (ansible_exists == true) {
-                     echo "Skipping Ansible install - already exixts"
-                } else {
-                     sh 'sudo apt-get update -y && sudo apt-get upgrade -y'
-                     sh 'sudo apt install -y wget tree unzip ansible python3-pip python3-apt'               
-                }
-              }
-            }
-          }
 
-        stage('Run ansible-lint against playbook') {
+        stage('Checkout code') {
             steps {
-            sh 'docker run --rm -v $WORKSPACE/playbooks:/data cytopia/ansible-lint:4 apache-install.yml'
-            sh 'docker run --rm -v $WORKSPACE/playbooks:/data cytopia/ansible-lint:4 website-update.yml'
-            sh 'docker run --rm -v $WORKSPACE/playbooks:/data cytopia/ansible-lint:4 website-test.yml'
+                git branch: 'main',
+                    credentialsId: '2IZkykVuIbWUIdXJ6AzcsEQD+8UZnKfCdMprvldfVAg',
+                    url: 'git@github.com:Aaditi-Digra/ansible-webserver.git'
             }
         }
 
-        stage('Third Stage') {
+        stage('Installing Ansible') {
             steps {
-                git branch: 'main', credentialsId: '2IZkykVuIbWUIdXJ6AzcsEQD+8UZnKfCdMprvldfVAg', url: 'git@github.com:Aaditi-Digra/ansible-webserver.git'
+                sh '''
+                    if command -v ansible >/dev/null && command -v ansible-lint >/dev/null; then
+                        echo "Skipping install - ansible and ansible-lint already exist"
+                    else
+                        sudo apt-get update -y
+                        sudo apt-get install -y wget tree unzip ansible ansible-lint python3-pip python3-apt
+                    fi
+                '''
+            }
+        }
+
+        stage('Run ansible-lint against playbook') {
+            steps {
+                sh '''
+                    cd playbooks
+                    ansible-lint apache-install.yml website-update.yml website-test.yml
+                '''
             }
         }
     }
